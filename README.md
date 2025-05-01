@@ -1,6 +1,6 @@
 # Containerlab MCP Server
 
-This is a quick and dirty MCP (Model Control Protocol) trial for interacting with containerlab using Claude. This integration allows Claude to create, manage, and interact with network labs through the containerlab API server.
+This is a quick and dirty MCP (Model Context Protocol) trial for interacting with containerlab using Claude. This integration allows Claude to create, manage, and interact with network labs through the containerlab API server.
 
 ## Requirements
 
@@ -13,7 +13,7 @@ This is a quick and dirty MCP (Model Control Protocol) trial for interacting wit
 
 ### For Windows
 ```bash
-export GOOS=windows                    
+export GOOS=windows
 export GOARCH=amd64
 go build -o clab-mcp-server.exe main.go
 ```
