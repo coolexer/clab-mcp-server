@@ -1,8 +1,6 @@
 # Containerlab MCP Server
 
-This is a quick and dirty MCP (Model Context Protocol) trial for interacting with containerlab using Claude. This integration allows Claude to create, manage, and interact with network labs through the containerlab API server.
-
-## Requirements
+This is a quick and dirty MCP (Model Context Protocol) trial for interacting with containerlab using AI. The example is tailored for claude desktop.
 
 1. Running [containerlab API server](https://github.com/srl-labs/clab-api-server)
 2. Latest build of [containerlab](https://github.com/srl-labs/containerlab) from the main branch
