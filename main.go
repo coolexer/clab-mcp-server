@@ -193,6 +193,23 @@ type DestroyLabArgs struct {
 	Graceful bool   `json:"graceful" jsonschema:"description=Attempt graceful shutdown of containers"`
 }
 
+// SSH session creation arguments
+type CreateSSHSessionArgs struct {
+	LabName  string `json:"labName" jsonschema:"required,description=Name of the lab"`
+	NodeName string `json:"nodeName" jsonschema:"required,description=Name of the node to SSH into"`
+}
+
+// SSH session list arguments
+type ListSSHSessionsArgs struct {
+	LabName string `json:"labName" jsonschema:"required,description=Name of the lab"`
+}
+
+// SSH session deletion arguments
+type DeleteSSHSessionArgs struct {
+	LabName   string `json:"labName" jsonschema:"required,description=Name of the lab"`
+	SessionID string `json:"sessionId" jsonschema:"required,description=ID of the SSH session to delete"`
+}
+
 func main() {
 	// Print startup message to stderr, not stdout
 	fmt.Fprintln(os.Stderr, "Containerlab MCP Server started")
@@ -425,5 +442,122 @@ func registerTools(server *mcp_golang.Server, apiClient *ApiClient) {
 		})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error registering destroy lab tool: %v\n", err)
+	}
+
+	// Create SSH Session tool
+	err = server.RegisterTool("createSSHSession",
+		`Create an SSH session to a lab node.
+
+    This allocates a proxy port on the API server that forwards SSH traffic to the specified node's port 22.
+    The response includes the SSH connection details (host, port) that can be used to connect.
+
+    Example input:
+    {
+        "labName": "my-lab",
+        "nodeName": "srl1"
+    }
+
+    Returns SSH connection info including the allocated proxy port.`,
+		func(args CreateSSHSessionArgs) (*mcp_golang.ToolResponse, error) {
+			path := fmt.Sprintf("/api/v1/labs/%s/ssh-sessions", args.LabName)
+
+			sessionReq := struct {
+				NodeName string `json:"nodeName"`
+			}{
+				NodeName: args.NodeName,
+			}
+
+			resp, err := apiClient.makeRequest("POST", path, sessionReq, nil)
+			if err != nil {
+				return createErrorResponse(fmt.Sprintf("Failed to create SSH session: %v", err)), nil
+			}
+			defer resp.Body.Close()
+
+			body, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+				return createErrorResponse(fmt.Sprintf("Failed to create SSH session: %s", body)), nil
+			}
+
+			// Try to pretty-print the response
+			var jsonResp interface{}
+			if err := json.Unmarshal(body, &jsonResp); err == nil {
+				prettyJSON, _ := json.MarshalIndent(jsonResp, "", "  ")
+				return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(
+					fmt.Sprintf("SSH session created successfully.\n%s", string(prettyJSON)))), nil
+			}
+			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(
+				fmt.Sprintf("SSH session created successfully.\n%s", string(body)))), nil
+		})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error registering create SSH session tool: %v\n", err)
+	}
+
+	// List SSH Sessions tool
+	err = server.RegisterTool("listSSHSessions",
+		`List all active SSH sessions for a lab.
+
+    Returns information about all currently active SSH proxy sessions including
+    the node name, allocated port, and session status.
+
+    Example input:
+    {
+        "labName": "my-lab"
+    }`,
+		func(args ListSSHSessionsArgs) (*mcp_golang.ToolResponse, error) {
+			path := fmt.Sprintf("/api/v1/labs/%s/ssh-sessions", args.LabName)
+
+			resp, err := apiClient.makeRequest("GET", path, nil, nil)
+			if err != nil {
+				return createErrorResponse(fmt.Sprintf("Failed to list SSH sessions: %v", err)), nil
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				body, _ := io.ReadAll(resp.Body)
+				return createErrorResponse(fmt.Sprintf("Failed to list SSH sessions: %s", body)), nil
+			}
+
+			var sessionsResp interface{}
+			if err := json.NewDecoder(resp.Body).Decode(&sessionsResp); err != nil {
+				return createErrorResponse(fmt.Sprintf("Failed to parse SSH sessions response: %v", err)), nil
+			}
+
+			sessionsJSON, _ := json.MarshalIndent(sessionsResp, "", "  ")
+			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(string(sessionsJSON))), nil
+		})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error registering list SSH sessions tool: %v\n", err)
+	}
+
+	// Delete SSH Session tool
+	err = server.RegisterTool("deleteSSHSession",
+		`Delete/close an SSH session.
+
+    Removes the SSH proxy session and frees the allocated port.
+
+    Example input:
+    {
+        "labName": "my-lab",
+        "sessionId": "abc123"
+    }`,
+		func(args DeleteSSHSessionArgs) (*mcp_golang.ToolResponse, error) {
+			path := fmt.Sprintf("/api/v1/labs/%s/ssh-sessions/%s", args.LabName, args.SessionID)
+
+			resp, err := apiClient.makeRequest("DELETE", path, nil, nil)
+			if err != nil {
+				return createErrorResponse(fmt.Sprintf("Failed to delete SSH session: %v", err)), nil
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+				body, _ := io.ReadAll(resp.Body)
+				return createErrorResponse(fmt.Sprintf("Failed to delete SSH session: %s", body)), nil
+			}
+
+			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(
+				fmt.Sprintf("SSH session %s deleted successfully", args.SessionID))), nil
+		})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error registering delete SSH session tool: %v\n", err)
 	}
 }
