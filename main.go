@@ -459,15 +459,9 @@ func registerTools(server *mcp_golang.Server, apiClient *ApiClient) {
 
     Returns SSH connection info including the allocated proxy port.`,
 		func(args CreateSSHSessionArgs) (*mcp_golang.ToolResponse, error) {
-			path := fmt.Sprintf("/api/v1/labs/%s/ssh-sessions", args.LabName)
+			path := fmt.Sprintf("/api/v1/labs/%s/nodes/%s/ssh", args.LabName, args.NodeName)
 
-			sessionReq := struct {
-				NodeName string `json:"nodeName"`
-			}{
-				NodeName: args.NodeName,
-			}
-
-			resp, err := apiClient.makeRequest("POST", path, sessionReq, nil)
+			resp, err := apiClient.makeRequest("POST", path, nil, nil)
 			if err != nil {
 				return createErrorResponse(fmt.Sprintf("Failed to create SSH session: %v", err)), nil
 			}
@@ -504,7 +498,7 @@ func registerTools(server *mcp_golang.Server, apiClient *ApiClient) {
         "labName": "my-lab"
     }`,
 		func(args ListSSHSessionsArgs) (*mcp_golang.ToolResponse, error) {
-			path := fmt.Sprintf("/api/v1/labs/%s/ssh-sessions", args.LabName)
+			path := "/api/v1/ssh/sessions"
 
 			resp, err := apiClient.makeRequest("GET", path, nil, nil)
 			if err != nil {
@@ -541,7 +535,7 @@ func registerTools(server *mcp_golang.Server, apiClient *ApiClient) {
         "sessionId": "abc123"
     }`,
 		func(args DeleteSSHSessionArgs) (*mcp_golang.ToolResponse, error) {
-			path := fmt.Sprintf("/api/v1/labs/%s/ssh-sessions/%s", args.LabName, args.SessionID)
+			path := fmt.Sprintf("/api/v1/ssh/sessions/%s", args.SessionID)
 
 			resp, err := apiClient.makeRequest("DELETE", path, nil, nil)
 			if err != nil {
