@@ -175,8 +175,9 @@ type DeployLabArgs struct {
 
 // Lab inspection arguments
 type InspectLabArgs struct {
-	LabName string `json:"labName" jsonschema:"required,description=Name of the lab to inspect"`
-	Details bool   `json:"details" jsonschema:"description=Include detailed container information"`
+	LabName  string `json:"labName" jsonschema:"required,description=Name of the lab to inspect"`
+	Details  bool   `json:"details" jsonschema:"description=Include detailed container information"`
+	Topology bool   `json:"topology" jsonschema:"description=Include topology information with port bindings"`
 }
 
 // Command execution arguments
@@ -341,6 +342,9 @@ func registerTools(server *mcp_golang.Server, apiClient *ApiClient) {
 			queryParams := make(map[string]string)
 			if args.Details {
 				queryParams["details"] = "true"
+			}
+			if args.Topology {
+				queryParams["topology"] = "true"
 			}
 
 			resp, err := apiClient.makeRequest("GET", path, nil, queryParams)
